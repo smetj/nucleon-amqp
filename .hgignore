@@ -1,0 +1,6 @@
+syntax: glob
+*.pyc
+*.swp
+nucleon.amqp.egg-info
+docs/_build
+docs/*.png

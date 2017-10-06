@@ -1,0 +1,5 @@
+recursive-include tests *.py
+recursive-include example *.py
+include docs/*.rst docs/*.svg docs/conf.py docs/Makefile
+include runtests.py
+recursive-include docs/_static *

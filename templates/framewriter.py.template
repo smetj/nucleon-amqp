@@ -1,0 +1,55 @@
+
+def syncmethod(*responses):
+    """Decorator for assigning appropriate responses for an AMQP method."""
+    def decorate(method):
+
+        # This horrible piece of gubbins is so that the arg spec shows correctly
+        # in the auto-generated documentation
+        #
+        # Lifted from http://emptysquare.net/blog/copying-a-python-functions-signature/
+        #
+        argspec = inspect.getargspec(method)
+        argspec[0].pop(0)
+        formatted_args = inspect.formatargspec(*argspec)
+        formatted_args = formatted_args.lstrip('(').rstrip(')').rstrip(', ')
+        largs = 'self' if not formatted_args.strip() else ('self, ' + formatted_args)
+        fndef = 'lambda %s: self._call_sync(method.__get__(self), responses, %s)' % (
+            largs,
+            ', '.join(argspec[0])
+        )
+
+        fake_fn = eval(fndef, {
+            'method': method,
+            'responses': responses
+        })
+        return wraps(method)(fake_fn)
+    return decorate
+
+
+class FrameWriter(object):
+    """Interface for converting AMQP client method calls to AMQP frames.
+
+    The underlying transport is not defined here; subclasses can implement
+    this by defining ._send() and ._send_message() to encode the frame and
+    ultimately write it to the wire.
+    """
+
+    def _send(self, frame):
+        raise NotImplementedError(
+            "Subclasses must implement this method to send a method frame."
+        )
+
+    def _send_message(self, frame, headers, payload):
+        raise NotImplementedError(
+            "Subclasses must implement this method to send a method frame "
+            "plus message headers and payload."
+        )
+
+    def _call_sync(self, method, responses, *args, **kwargs):
+        """Hook for making a method call synchronous.
+
+        Subclasses should re-implement this method to call method in such a way
+        that the client will receive one of the methods in responses as a
+        response.
+        """
+        return method(*args, **kwargs)
